@@ -1,0 +1,19 @@
+namespace: git_ogawa
+name: yaml
+version: 1.0.0
+readme: README.md
+authors:
+  - git-ogawa <stu1232541964@gmail.com>
+description: Collection for operations to yaml.
+license_file: LICENSE
+tags: []
+dependencies: {}
+repository: https://github.com/git-ogawa/ansible-collection-yaml
+documentation: https://github.com/git-ogawa/ansible-collection-yaml
+issues: https://github.com/git-ogawa/ansible-collection-yaml/issues
+build_ignore:
+  - collection
+  - test
+  - tmp
+  - .mypy_cache
+  - .vscode
