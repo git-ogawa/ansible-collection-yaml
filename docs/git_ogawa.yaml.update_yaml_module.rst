@@ -134,6 +134,26 @@ Parameters
                     <td class="elbow-placeholder"></td>
                 <td colspan="1">
                     <div class="ansibleOptionAnchor" id="parameter-"></div>
+                    <b>removed</b>
+                    <a class="ansibleOptionLink" href="#parameter-" title="Permalink to this option"></a>
+                    <div style="font-size: small">
+                        <span style="color: purple">boolean</span>
+                    </div>
+                </td>
+                <td>
+                        <ul style="margin: 0; padding: 0"><b>Choices:</b>
+                                    <li><div style="color: blue"><b>no</b>&nbsp;&larr;</div></li>
+                                    <li>yes</li>
+                        </ul>
+                </td>
+                <td>
+                        <div>Set true to remove the existing key if exists.</div>
+                </td>
+            </tr>
+            <tr>
+                    <td class="elbow-placeholder"></td>
+                <td colspan="1">
+                    <div class="ansibleOptionAnchor" id="parameter-"></div>
                     <b>value</b>
                     <a class="ansibleOptionLink" href="#parameter-" title="Permalink to this option"></a>
                     <div style="font-size: small">
@@ -194,6 +214,17 @@ Examples
           - key: user_list[-1].age
             value: 20
             added: true
+
+    # Remove the existing keys
+    # If the keys are missing, there is no change.
+    - name: Remove the specified keys
+      git_ogawa.yaml.update_yaml:
+        path: /tmp/pod.yml
+        update:
+          - key: user_list[1].name
+            removed: true
+          - key: user.age
+            removed: true
 
     # Update some values in kubernetes manifest.
     # for example https://raw.githubusercontent.com/kubernetes/website/main/content/en/examples/pods/simple-pod.yaml
