@@ -1,0 +1,181 @@
+- name: Check update_yaml works correctly
+  hosts: localhost
+  gather_facts: false
+  vars:
+    test_files:
+      manifest: manifest.yml
+      simple_pod: simple-pod.yml
+  tasks:
+    - name: Copy test targets
+      ansible.builtin.copy:
+        src: "{{ item }}"
+        dest: "/tmp/{{ item }}"
+        mode: "0644"
+      loop: "{{ test_files.values() | list }}"
+
+    - name: Update the existing key's values to another
+      block:
+        - name: Update values of two keys in /tmp/manifest.yml
+          git_ogawa.yaml.update_yaml:
+            path: "/tmp/{{ test_files.manifest }}"
+            update:
+              - key: user.name
+                value: myname
+              - key: user.age
+                value: 20
+
+        - name: Load the result
+          ansible.builtin.slurp:
+            src: "/tmp/{{ test_files.manifest }}"
+          register: result
+
+        - name: Assertion
+          ansible.builtin.assert:
+            that:
+              - content.user.name == "myname"
+              - content.user.age == 20
+          vars:
+            content: "{{ result.content | b64decode | from_yaml }}"
+
+    - name: Add a new list
+      block:
+        - name: Add a list "user_list"
+          git_ogawa.yaml.update_yaml:
+            path: "/tmp/{{ test_files.manifest }}"
+            update:
+              - key: user_list[0].name
+                value: testuser
+                added: true
+              - key: user_list[1].age
+                value: 20
+                added: true
+              - key: user_list[2].ratio
+                value: 1.5
+                added: true
+              - key: user_list[2].bool
+                value: true
+                added: true
+
+        - name: Load the result
+          ansible.builtin.slurp:
+            src: "/tmp/{{ test_files.manifest }}"
+          register: result
+
+        - name: Assertion
+          ansible.builtin.assert:
+            that:
+              - content.user_list[0].name == "testuser"
+              - content.user_list[1].age == 20
+              - content.user_list[2].ratio == 1.5
+              - content.user_list[2].bool == true
+          vars:
+            content: "{{ result.content | b64decode | from_yaml }}"
+
+    - name: Remove the existing keys
+      block:
+        - name: Remove the specified keys
+          git_ogawa.yaml.update_yaml:
+            path: "/tmp/{{ test_files.manifest }}"
+            update:
+              - key: user_list
+                value: test
+                removed: true
+              - key: user.age
+                removed: true
+
+        - name: Load the result
+          ansible.builtin.slurp:
+            src: "/tmp/{{ test_files.manifest }}"
+          register: result
+
+        - name: Assertion
+          ansible.builtin.assert:
+            that:
+              - '"user_list" not in content'
+              - '"age" not in content.user'
+          vars:
+            content: "{{ result.content | b64decode | from_yaml }}"
+
+    - name: Update the nested key's values
+      block:
+        - name: Update name and image version.
+          git_ogawa.yaml.update_yaml:
+            path: "/tmp/{{ test_files.simple_pod }}"
+            update:
+              - key: metadata.name
+                value: my-nginx
+              - key: spec.containers[0].image
+                value: nginx:latest
+
+        - name: Load the result
+          ansible.builtin.slurp:
+            src: "/tmp/{{ test_files.simple_pod }}"
+          register: result
+
+        - name: Assertion
+          ansible.builtin.assert:
+            that:
+              - content.metadata.name == "my-nginx"
+              - content.spec.containers[0].image == "nginx:latest"
+          vars:
+            content: "{{ result.content | b64decode | from_yaml }}"
+
+    - name: Check that the mapping values is working
+      block:
+        - name: Update name and image version and add new container
+          git_ogawa.yaml.update_yaml:
+            path: "/tmp/{{ test_files.simple_pod }}"
+            values:
+              metadata:
+                namespace: default
+              spec:
+                template:
+                  spec:
+                    containers:
+                      - name: hello2
+                        image: busybox:latest
+                      - name: nginx
+                        image: nginx:latest
+
+        - name: Load the result
+          ansible.builtin.slurp:
+            src: "/tmp/{{ test_files.simple_pod }}"
+          register: result
+
+        - name: Assertion
+          ansible.builtin.assert:
+            that:
+              - content.metadata.namespace == "default"
+              - content.spec.template.spec.containers[0].name == "hello2"
+              - content.spec.template.spec.containers[0].image == "busybox:latest"
+              - content.spec.template.spec.containers[1].name == "nginx"
+              - content.spec.template.spec.containers[1].image == "nginx:latest"
+          vars:
+            content: "{{ result.content | b64decode | from_yaml }}"
+
+    - name: Check that converting list to dict with overwrite option is working
+      block:
+        - name: Update values with overwrite option
+          git_ogawa.yaml.update_yaml:
+            path: "/tmp/{{ test_files.simple_pod }}"
+            overwrite: true
+            values:
+              spec:
+              template:
+                spec:
+                containers:
+                  mykey: myvalue
+
+        - name: Load the result
+          ansible.builtin.slurp:
+            src: "/tmp/{{ test_files.simple_pod }}"
+          register: result
+
+        - name: Assertion
+          ansible.builtin.assert:
+            that:
+              - content.spec is none
+              - content.template.spec is none
+              - content.template.containers.mykey == "myvalue"
+          vars:
+            content: "{{ result.content | b64decode | from_yaml }}"
