@@ -45,6 +45,10 @@ options:
                 description: Set true to add the key that corresponding to the value are missing.
                 default: false
                 type: bool
+            removed:
+                description: Set true to remove the existing key if exists.
+                default: false
+                type: bool
     values:
         description: Mapping of values to be updated. See the examples below.
         required: false
@@ -82,6 +86,17 @@ EXAMPLES = r"""
       - key: user_list[-1].age
         value: 20
         added: true
+
+# Remove the existing keys
+# If the keys are missing, there is no change.
+- name: Remove the specified keys
+  git_ogawa.yaml.update_yaml:
+    path: /tmp/pod.yml
+    update:
+      - key: user_list[1].name
+        removed: true
+      - key: user.age
+        removed: true
 
 # Update some values in kubernetes manifest.
 # for example https://raw.githubusercontent.com/kubernetes/website/main/content/en/examples/pods/simple-pod.yaml
@@ -153,6 +168,7 @@ def run_module():
                 key=dict(type="str", required=False),
                 values=dict(type="str", required=False, default={}),
                 added=dict(type="bool", required=False, default=False),
+                removed=dict(type="bool", required=False, default=False),
             ),
         ),
         values=dict(type="dict", required=False, default={}),

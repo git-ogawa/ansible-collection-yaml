@@ -1,6 +1,6 @@
 namespace: git_ogawa
 name: yaml
-version: 1.0.0
+version: 1.1.0
 readme: README.md
 authors:
   - git-ogawa <stu1232541964@gmail.com>
@@ -13,7 +13,7 @@ documentation: https://github.com/git-ogawa/ansible-collection-yaml
 issues: https://github.com/git-ogawa/ansible-collection-yaml/issues
 build_ignore:
   - collection
-  - test
+  - tests
   - tmp
   - .mypy_cache
   - .vscode

@@ -1,0 +1,63 @@
+- name: Check update_yaml error handling
+  hosts: localhost
+  gather_facts: false
+  vars:
+    test_files:
+      manifest: manifest.yml
+      simple_pod: simple-pod.yml
+  tasks:
+    - name: Copy test targets
+      ansible.builtin.copy:
+        src: "{{ item }}"
+        dest: "/tmp/{{ item }}"
+        mode: "0644"
+      loop: "{{ test_files.values() | list }}"
+
+    - name: Specify not existing key
+      block:
+        - name: Specify not existing key
+          git_ogawa.yaml.update_yaml:
+            path: "/tmp/{{ test_files.manifest }}"
+            update:
+              - key: user.name.test
+                value: myname
+          ignore_errors: true
+          register: result
+
+        - name: Assertion
+          ansible.builtin.assert:
+            that:
+              - 'result.msg == "Cannot get value of key: user.name"'
+
+    - name: Convert list to dict without an override option
+      block:
+        - name: Convert list to dict without an override option
+          git_ogawa.yaml.update_yaml:
+            path: "/tmp/{{ test_files.simple_pod }}"
+            values:
+              spec:
+                containers:
+                  name: nginx
+          ignore_errors: true
+          register: result
+
+        - name: Assertion
+          ansible.builtin.assert:
+            that:
+              - result.msg == "Type of 'containers' is dict but the one in target seem to be list"
+
+    - name: Convert dict to list without an override option
+      block:
+        - name: Convert dict to list without an override option
+          git_ogawa.yaml.update_yaml:
+            path: "/tmp/{{ test_files.simple_pod }}"
+            values:
+              metadata:
+                - name
+          ignore_errors: true
+          register: result
+
+        - name: Assertion
+          ansible.builtin.assert:
+            that:
+              - result.msg == "Type of 'metadata' is list but the one in target seem to be dict"

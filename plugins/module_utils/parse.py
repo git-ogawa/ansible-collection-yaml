@@ -54,7 +54,7 @@ class YamlParser:
             index = int(match.group(2))
             return key, index
 
-    def _check(self, key: str, added: bool = False) -> None:
+    def _check(self, key: str, added: bool = False, removed: bool = False) -> None:
         split_key = key.split(".")
         v = self.yaml_data
         for i in range(len(split_key)):
@@ -64,30 +64,38 @@ class YamlParser:
                 if not isinstance(v, dict):
                     if added:
                         v[key] = {}
+                    elif removed:
+                        break
                     else:
                         depth = self._join(split_key, ".", i)
-                        raise AttributeError(f"Cannot get value of {depth}")
+                        raise AttributeError(f"Cannot get value of key: {depth}")
                 if not split_key[i] in v.keys():
                     if added:
                         v[key] = {}
+                    elif removed:
+                        break
                     else:
                         depth = self._join(split_key, ".", i + 1)
-                        raise AttributeError(f"Cannot get value of {depth}")
+                        raise AttributeError(f"Cannot get value of key: {depth}")
                 v = v[key]
             else:
                 # key is expected to list.
                 if key not in v.keys():
                     if added:
                         v[key] = [{}]
+                    elif removed:
+                        break
                     else:
                         depth = self._join(split_key, ".", i + 1)
-                        raise AttributeError(f"Cannot get value of {depth}")
+                        raise AttributeError(f"Cannot get value of key: {depth}")
                 if len(v[key]) <= index:
                     if added:
                         v[key].append({})
+                    elif removed:
+                        break
                     else:
                         depth = self._join(split_key, ".", i + 1)
-                        raise IndexError(f"{depth} is out of index")
+                        raise IndexError(f"key: {depth} is out of index")
 
                 v = v[key][index]
 
@@ -110,7 +118,7 @@ class YamlParser:
             depth = len(l)
         return delimiter.join(str(x) for x in l[:depth])
 
-    def _update(self, key_string: str, value) -> bool:
+    def _update(self, key_string: str, value: Any=None, removed: bool = False) -> bool:
         keys = key_string.split(".")
         temp_dict = self.yaml_data
         for key in keys[:-1]:
@@ -124,22 +132,37 @@ class YamlParser:
             key, idx = self._convert(keys[-1])
             keys[-1] = key
             try:
+                if removed is True:
+                    try:
+                        temp_dict.pop(keys[-1][idx])
+                        return True
+                    except KeyError:
+                        return False
+
                 org_value = temp_dict[keys[-1]][idx]
                 if org_value == value:
                     return False
                 temp_dict[keys[-1]][idx] = value
                 return True
             except (IndexError, KeyError):
-                raise ValueError(f"Invalid index {idx} for key {key}")
+                raise ValueError(f"Invalid index {idx} for key: {key}")
         else:
             try:
+                if removed is True:
+                    try:
+                        temp_dict.pop(keys[-1])
+                        return True
+                    except KeyError:
+                        return False
+
                 org_value = temp_dict[keys[-1]]
                 if org_value == value:
                     return False
+
                 temp_dict[keys[-1]] = value
                 return True
             except KeyError:
-                raise ValueError(f"Invalid key {keys[-1]}")
+                raise ValueError(f"Invalid key: {keys[-1]}")
 
     def save(self) -> None:
         with open(self.path, "w") as f:
@@ -153,10 +176,12 @@ class YamlParser:
             if self.update:
                 for v in self.update:
                     key = str(v["key"])
-                    self._check(key, v.get("added", False))
-                    if self._update(str(key), v["value"]) is True:
+                    self._check(key, v.get("added", False), v.get("removed"))
+
+                    if self._update(str(key), v.get("value", None), removed=v.get("removed", False)) is True:
                         # Set status to changed when at least one value are updated.
                         self.changed = True
+
 
             if self.values:
                 self.compare_dicts(
@@ -194,7 +219,7 @@ class YamlParser:
                     self.changed = True
                 else:
                     raise TypeError(
-                        f"Type of {key} is dict but the one in target seem to be list"
+                        f"Type of '{key}' is dict but the one in target seem to be list"
                     )
             elif isinstance(src_dict[key], list) and isinstance(dst_dict[key], list):
                 # When both src and dest are list, check the elements of src in order. .
@@ -241,7 +266,7 @@ class YamlParser:
                     self.changed = True
                 else:
                     raise TypeError(
-                        f"Type of {key} is list but the one in target seem to be dict"
+                        f"Type of '{key}' is list but the one in target seem to be dict"
                     )
             elif src_dict[key] != dst_dict[key]:
                 dst_dict[key] = src_dict[key]
